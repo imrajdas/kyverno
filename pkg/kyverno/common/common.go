@@ -35,7 +35,6 @@ import (
 
 type Resource struct {
 	Name   string            `json:"name"`
-	Values map[string]string `json:"values"`
 }
 
 type Policy struct {
@@ -44,6 +43,7 @@ type Policy struct {
 }
 
 type Values struct {
+	Values map[string]string `json:"values"`
 	Policies []Policy `json:"policies"`
 }
 
@@ -300,8 +300,8 @@ func RemoveDuplicateVariables(matches [][]string) string {
 }
 
 // GetVariable - get the variables from console/file
-func GetVariable(variablesString, valuesFile string) (map[string]string, map[string]map[string]Resource, error) {
-	valuesMap := make(map[string]map[string]Resource)
+func GetVariable(variablesString, valuesFile string) (map[string]string, error) {
+	//valuesMap := make(map[string]map[string]Resource)
 	variables := make(map[string]string)
 	if variablesString != "" {
 		kvpairs := strings.Split(strings.Trim(variablesString, " "), ",")
@@ -313,29 +313,37 @@ func GetVariable(variablesString, valuesFile string) (map[string]string, map[str
 	if valuesFile != "" {
 		yamlFile, err := ioutil.ReadFile(valuesFile)
 		if err != nil {
-			return variables, valuesMap, sanitizederror.NewWithError("unable to read yaml", err)
+			return variables, sanitizederror.NewWithError("unable to read yaml", err)
 		}
 
 		valuesBytes, err := yaml.ToJSON(yamlFile)
 		if err != nil {
-			return variables, valuesMap, sanitizederror.NewWithError("failed to convert json", err)
+			return variables, sanitizederror.NewWithError("failed to convert json", err)
 		}
 
 		values := &Values{}
 		if err := json.Unmarshal(valuesBytes, values); err != nil {
-			return variables, valuesMap, sanitizederror.NewWithError("failed to decode yaml", err)
+			return variables, sanitizederror.NewWithError("failed to decode yaml", err)
 		}
 
-		for _, p := range values.Policies {
-			pmap := make(map[string]Resource)
-			for _, r := range p.Resources {
-				pmap[r.Name] = r
+		for ia, va := range values.Values {
+			if it, ok := variables[ia]; ok {
+				va += it
 			}
-			valuesMap[p.Name] = pmap
+			variables[ia] = va
+
 		}
+
+		//for _, p := range values.Policies {
+		//	pmap := make(map[string]Resource)
+		//	for _, r := range p.Resources {
+		//		pmap[r.Name] = r
+		//	}
+		//	valuesMap[p.Name] = pmap
+		//}
 	}
 
-	return variables, valuesMap, nil
+	return variables, nil
 }
 
 // MutatePolices - function to apply mutation on policies

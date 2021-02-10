@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -147,7 +146,7 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 		return validateEngineResponses, rc, resources, skippedPolicies, sanitizederror.NewWithError("pass the values either using set flag or values_file flag", err)
 	}
 
-	variables, valuesMap, err := common.GetVariable(variablesString, valuesFile)
+	variables, err := common.GetVariable(variablesString, valuesFile)
 	if err != nil {
 		if !sanitizederror.IsErrorSanitized(err) {
 			return validateEngineResponses, rc, resources, skippedPolicies, sanitizederror.NewWithError("failed to decode yaml", err)
@@ -256,9 +255,9 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 		for _, resource := range resources {
 			// get values from file for this policy resource combination
 			thisPolicyResourceValues := make(map[string]string)
-			if len(valuesMap[policy.GetName()]) != 0 && !reflect.DeepEqual(valuesMap[policy.GetName()][resource.GetName()], Resource{}) {
-				thisPolicyResourceValues = valuesMap[policy.GetName()][resource.GetName()].Values
-			}
+			//if len(valuesMap[policy.GetName()]) != 0 && !reflect.DeepEqual(valuesMap[policy.GetName()][resource.GetName()], Resource{}) {
+			//	thisPolicyResourceValues = valuesMap[policy.GetName()][resource.GetName()].Values
+			//}
 
 			for k, v := range variables {
 				thisPolicyResourceValues[k] = v

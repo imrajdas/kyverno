@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: image-pull-policy-always
+spec:
+  rules:
+    - name: image-pull-policy-latest
+      match:
+        resources:
+          kinds:
+            - Pod
+      mutate:
+        overlay:
+          spec:
+            containers:
+              - (image): "*:latest"
+                imagePullPolicy: "Always"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-app-label
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: check-for-app-label
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "label `app` is required"
+        pattern:
+          metadata:
+            labels:
+              app: "?*"
