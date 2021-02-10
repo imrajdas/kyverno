@@ -1,0 +1,6 @@
+values:
+  request.namespace: devtest
+policies:
+  - name: default-deny-ingress
+    resources:
+      - name: devtest

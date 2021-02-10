@@ -2,11 +2,6 @@ package apply
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
 	"github.com/go-git/go-billy/v5/memfs"
 	v1 "github.com/kyverno/kyverno/pkg/api/kyverno/v1"
 	pkgCommon "github.com/kyverno/kyverno/pkg/common"
@@ -19,8 +14,13 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	l "log"
+	"os"
+	"path/filepath"
 	log "sigs.k8s.io/controller-runtime/pkg/log"
 	yaml1 "sigs.k8s.io/yaml"
+	"strings"
+	"time"
 )
 
 type resultCounts struct {
@@ -121,7 +121,8 @@ func Command() *cobra.Command {
 				return err
 			}
 
-			printReportOrViolation(policyReport, validateEngineResponses, rc, resourcePaths, len(resources), skippedPolicies)
+			l.Print(validateEngineResponses, rc, resources, skippedPolicies)
+			//printReportOrViolation(policyReport, validateEngineResponses, rc, resourcePaths, len(resources), skippedPolicies)
 			return nil
 		},
 	}
@@ -153,6 +154,7 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 		}
 		return validateEngineResponses, rc, resources, skippedPolicies, err
 	}
+	l.Print(variables)
 
 	openAPIController, err := openapi.NewOpenAPIController()
 	if err != nil {
@@ -184,12 +186,15 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 		fmt.Printf("Error: failed to load policies\nCause: %s\n", err)
 		os.Exit(1)
 	}
+	l.Print(policies, dClient, openAPIController)
 
 	if len(resourcePaths) == 0 && !cluster {
 		return validateEngineResponses, rc, resources, skippedPolicies, sanitizederror.NewWithError(fmt.Sprintf("resource file(s) or cluster required"), err)
 	}
 
+	//_, err = checkMutateLogPath(mutateLogPath)
 	mutateLogPathIsDir, err := checkMutateLogPath(mutateLogPath)
+
 	if err != nil {
 		if !sanitizederror.IsErrorSanitized(err) {
 			return validateEngineResponses, rc, resources, skippedPolicies, sanitizederror.NewWithError("failed to create file/folder", err)
@@ -220,15 +225,17 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 		msgResources = fmt.Sprintf("%d resources", len(resources))
 	}
 
+	l.Print(msgPolicies, msgResources)
+
 	if len(mutatedPolicies) > 0 && len(resources) > 0 {
 		fmt.Printf("\napplying %s to %s... \n", msgPolicies, msgResources)
 	}
 
 	rc = &resultCounts{}
-	engineResponses := make([]*response.EngineResponse, 0)
+	//engineResponses := make([]*response.EngineResponse, 0)
 	validateEngineResponses = make([]*response.EngineResponse, 0)
 	skippedPolicies = make([]SkippedPolicy, 0)
-
+	//
 	for _, policy := range mutatedPolicies {
 		err := policy2.Validate(policy, nil, true, openAPIController)
 		if err != nil {
@@ -236,10 +243,10 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 			log.Log.V(3).Info(fmt.Sprintf("skipping policy %v as it is not valid", policy.Name), "error", err)
 			continue
 		}
-
+		//
 		matches := common.PolicyHasVariables(*policy)
 		variable := common.RemoveDuplicateVariables(matches)
-
+		//
 		if len(matches) > 0 && variablesString == "" && valuesFile == "" {
 			rc.skip++
 			skipPolicy := SkippedPolicy{
@@ -251,10 +258,11 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 			log.Log.V(3).Info(fmt.Sprintf("skipping policy %s", policy.Name), "error", fmt.Sprintf("policy have variable - %s", variable))
 			continue
 		}
-
+		//
 		for _, resource := range resources {
 			// get values from file for this policy resource combination
 			thisPolicyResourceValues := make(map[string]string)
+			//thisPolicyResourceValues = variables
 			//if len(valuesMap[policy.GetName()]) != 0 && !reflect.DeepEqual(valuesMap[policy.GetName()][resource.GetName()], Resource{}) {
 			//	thisPolicyResourceValues = valuesMap[policy.GetName()][resource.GetName()].Values
 			//}
@@ -262,7 +270,9 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 			for k, v := range variables {
 				thisPolicyResourceValues[k] = v
 			}
+			l.Print(resource)
 
+			//
 			if len(common.PolicyHasVariables(*policy)) > 0 && len(thisPolicyResourceValues) == 0 {
 				return validateEngineResponses, rc, resources, skippedPolicies, sanitizederror.NewWithError(fmt.Sprintf("policy %s have variables. pass the values for the variables using set/values_file flag", policy.Name), err)
 			}
@@ -271,16 +281,18 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 			if err != nil {
 				return validateEngineResponses, rc, resources, skippedPolicies, sanitizederror.NewWithError(fmt.Errorf("failed to apply policy %v on resource %v", policy.Name, resource.GetName()).Error(), err)
 			}
-			if responseError == true {
-				rc.fail++
-			} else {
-				rc.pass++
-			}
-			if rcErs == true {
-				rc.error++
-			}
-			engineResponses = append(engineResponses, ers...)
-			validateEngineResponses = append(validateEngineResponses, validateErs)
+
+			l.Print(ers, validateErs, responseError, rcErs)
+			//if responseError == true {
+			//	rc.fail++
+			//} else {
+			//	rc.pass++
+			//}
+			//if rcErs == true {
+			//	rc.error++
+			//}
+			//engineResponses = append(engineResponses, ers...)
+			//validateEngineResponses = append(validateEngineResponses, validateErs)
 		}
 	}
 
