@@ -257,7 +257,7 @@ func applyCommandHelper(resourcePaths []string, cluster bool, policyReport bool,
 			// get values from file for this policy resource combination
 			thisPolicyResourceValues := make(map[string]string)
 			if len(valuesMap[policy.GetName()]) != 0 && !reflect.DeepEqual(valuesMap[policy.GetName()][resource.GetName()], Resource{}) {
-				thisPolicyResourceValues = valuesMap[policy.GetName()][resource.GetName()].Values
+				thisPolicyResourceValues = variables
 			}
 
 			for k, v := range variables {

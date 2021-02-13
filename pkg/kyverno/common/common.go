@@ -35,7 +35,6 @@ import (
 
 type Resource struct {
 	Name   string            `json:"name"`
-	Values map[string]string `json:"values"`
 }
 
 type Policy struct {
@@ -44,6 +43,7 @@ type Policy struct {
 }
 
 type Values struct {
+	Values map[string]string `json:"values"`
 	Policies []Policy `json:"policies"`
 }
 
@@ -301,8 +301,8 @@ func RemoveDuplicateVariables(matches [][]string) string {
 
 // GetVariable - get the variables from console/file
 func GetVariable(variablesString, valuesFile string) (map[string]string, map[string]map[string]Resource, error) {
-	valuesMap := make(map[string]map[string]Resource)
 	variables := make(map[string]string)
+	valuesMap := make(map[string]map[string]Resource)
 	if variablesString != "" {
 		kvpairs := strings.Split(strings.Trim(variablesString, " "), ",")
 		for _, kvpair := range kvpairs {
@@ -333,6 +333,14 @@ func GetVariable(variablesString, valuesFile string) (map[string]string, map[str
 			}
 			valuesMap[p.Name] = pmap
 		}
+
+		for ia, va := range values.Values {
+			if it, ok := variables[ia]; ok {
+				va += it
+			}
+			variables[ia] = va
+		}
+
 	}
 
 	return variables, valuesMap, nil
