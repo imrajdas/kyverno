@@ -31,6 +31,36 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Run Trivy vulnerability scanner for kyvernopre
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/kyverno/kyvernopre:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy vulnerability scanner for kyverno
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/kyverno/kyverno:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy vulnerability scanner for kyverno cli
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/kyverno/kyverno-cli:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          
       - name: gofmt check
         run: |
          if [ "$(gofmt -s -l . | wc -l)" -ne 0 ] 
@@ -53,32 +83,3 @@ jobs:
           export PROJECT_PATH=$(pwd)
           make test-all
 
-      - name: Run Trivy vulnerability scanner for kyvernopre
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'ghcr.io/kyverno/kyvernopre:ci-kyverno'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Run Trivy vulnerability scanner for kyverno
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'ghcr.io/kyverno/kyverno:ci-kyverno'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Run Trivy vulnerability scanner for kyverno cli
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'ghcr.io/kyverno/kyverno-cli:ci-kyverno'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
