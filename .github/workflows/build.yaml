@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'add-trivy'
   pull_request:
     branches:
       - 'main'
@@ -52,4 +53,32 @@ jobs:
           export PROJECT_PATH=$(pwd)
           make test-all
 
+      - name: Run Trivy vulnerability scanner for kyvernopre
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/kyverno/kyvernopre:v1.3.2-10-g596bc9ba'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
 
+      - name: Run Trivy vulnerability scanner for kyverno
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/kyverno/kyverno:v1.3.2-10-g596bc9ba'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Run Trivy vulnerability scanner for kyverno cli
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/kyverno/kyverno-cli:v1.3.2-10-g596bc9ba'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
