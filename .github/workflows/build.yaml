@@ -56,7 +56,7 @@ jobs:
       - name: Run Trivy vulnerability scanner for kyvernopre
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'ghcr.io/kyverno/kyvernopre:v1.3.2-10-g596bc9ba'
+          image-ref: 'ghcr.io/kyverno/kyvernopre:ci-kyverno'
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
@@ -66,7 +66,7 @@ jobs:
       - name: Run Trivy vulnerability scanner for kyverno
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'ghcr.io/kyverno/kyverno:v1.3.2-10-g596bc9ba'
+          image-ref: 'ghcr.io/kyverno/kyverno:ci-kyverno'
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true
@@ -76,7 +76,7 @@ jobs:
       - name: Run Trivy vulnerability scanner for kyverno cli
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'ghcr.io/kyverno/kyverno-cli:v1.3.2-10-g596bc9ba'
+          image-ref: 'ghcr.io/kyverno/kyverno-cli:ci-kyverno'
           format: 'table'
           exit-code: '0'
           ignore-unfixed: true

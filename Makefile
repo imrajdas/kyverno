@@ -10,7 +10,8 @@ TIMESTAMP := $(shell date '+%Y-%m-%d_%I:%M:%S%p')
 
 REGISTRY?=ghcr.io
 REPO=$(REGISTRY)/kyverno
-IMAGE_TAG?=$(GIT_VERSION)
+#IMAGE_TAG?=$(GIT_VERSION)
+IMAGE_TAG?="ci-kyverno"
 GOOS ?= $(shell go env GOOS)
 PACKAGE ?=github.com/kyverno/kyverno
 LD_FLAGS="-s -w -X $(PACKAGE)/pkg/version.BuildVersion=$(GIT_VERSION) -X $(PACKAGE)/pkg/version.BuildHash=$(GIT_HASH) -X $(PACKAGE)/pkg/version.BuildTime=$(TIMESTAMP)"
