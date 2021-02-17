@@ -34,7 +34,7 @@ import (
 // GetPolicies - Extracting the policies from multiple YAML
 
 type Resource struct {
-	Name   string            `json:"name"`
+	Name string `json:"name"`
 }
 
 type Policy struct {
@@ -43,8 +43,8 @@ type Policy struct {
 }
 
 type Values struct {
-	Values map[string]string `json:"values"`
-	Policies []Policy `json:"policies"`
+	Values   map[string]string `json:"values"`
+	Policies []Policy          `json:"policies"`
 }
 
 func GetPolicies(paths []string) (policies []*v1.ClusterPolicy, errors []error) {
