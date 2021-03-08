@@ -8,13 +8,13 @@ import (
 	"strconv"
 	"strings"
 
-	jsonpatch "github.com/evanphx/json-patch"
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/go-logr/logr"
+	kyverno "github.com/kyverno/kyverno/pkg/api/kyverno/v1"
 	"github.com/kyverno/kyverno/pkg/common"
 	"github.com/kyverno/kyverno/pkg/engine"
 	"github.com/kyverno/kyverno/pkg/utils"
-
-	kyverno "github.com/kyverno/kyverno/pkg/api/kyverno/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 )
 
 // GenerateJSONPatchesForDefaults generates default JSON patches for
@@ -349,7 +349,7 @@ func generateRulePatches(policy kyverno.ClusterPolicy, controllers string, log l
 
 // the kyvernoRule holds the temporary kyverno rule struct
 // each field is a pointer to the the actual object
-// when serilizing data, we would expect to drop the omitempty key
+// when serializing data, we would expect to drop the omitempty key
 // otherwise (without the pointer), it will be set to empty value
 // - an empty struct in this case, some may fail the schema validation
 // may related to:
@@ -360,6 +360,8 @@ type kyvernoRule struct {
 	Name             string                    `json:"name"`
 	MatchResources   *kyverno.MatchResources   `json:"match"`
 	ExcludeResources *kyverno.ExcludeResources `json:"exclude,omitempty"`
+	Context          *[]kyverno.ContextEntry   `json:"context,omitempty"`
+	AnyAllConditions *apiextensions.JSON       `json:"preconditions,omitempty"`
 	Mutation         *kyverno.Mutation         `json:"mutate,omitempty"`
 	Validation       *kyverno.Validation       `json:"validate,omitempty"`
 }
@@ -405,7 +407,7 @@ func generateRuleForControllers(rule kyverno.Rule, controllers string, log logr.
 	if skipAutoGeneration {
 		if match.ResourceDescription.Name != "" || match.ResourceDescription.Selector != nil ||
 			exclude.ResourceDescription.Name != "" || exclude.ResourceDescription.Selector != nil {
-			logger.Info("skip generating rule on pod controllers: Name / Selector in resource decription may not be applicable.", "rule", rule.Name)
+			logger.Info("skip generating rule on pod controllers: Name / Selector in resource description may not be applicable.", "rule", rule.Name)
 			return kyvernoRule{}
 		}
 		if controllers == "all" {
@@ -415,9 +417,29 @@ func generateRuleForControllers(rule kyverno.Rule, controllers string, log logr.
 		}
 	}
 
+	name := fmt.Sprintf("autogen-%s", rule.Name)
+	if len(name) > 63 {
+		name = name[:63]
+	}
 	controllerRule := &kyvernoRule{
-		Name:           fmt.Sprintf("autogen-%s", rule.Name),
+		Name:           name,
 		MatchResources: match.DeepCopy(),
+	}
+
+	if len(rule.Context) > 0 {
+		controllerRule.Context = &rule.DeepCopy().Context
+	}
+
+	kyvernoAnyAllConditions, _ := utils.ApiextensionsJsonToKyvernoConditions(rule.AnyAllConditions)
+	switch typedAnyAllConditions := kyvernoAnyAllConditions.(type) {
+	case kyverno.AnyAllConditions:
+		if !reflect.DeepEqual(typedAnyAllConditions, kyverno.AnyAllConditions{}) {
+			controllerRule.AnyAllConditions = &rule.DeepCopy().AnyAllConditions
+		}
+	case []kyverno.Condition:
+		if len(typedAnyAllConditions) > 0 {
+			controllerRule.AnyAllConditions = &rule.DeepCopy().AnyAllConditions
+		}
 	}
 
 	if !reflect.DeepEqual(exclude, kyverno.ExcludeResources{}) {
@@ -473,7 +495,7 @@ func generateRuleForControllers(rule kyverno.Rule, controllers string, log logr.
 		var patterns []interface{}
 		anyPatterns, err := rule.Validation.DeserializeAnyPattern()
 		if err != nil {
-			logger.Error(err, "failed to deserialze anyPattern, expect type array")
+			logger.Error(err, "failed to deserialize anyPattern, expect type array")
 		}
 
 		for _, pattern := range anyPatterns {

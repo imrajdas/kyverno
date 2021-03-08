@@ -7,6 +7,7 @@ GIT_VERSION := $(shell git describe --always --tags)
 GIT_BRANCH := $(shell git branch | grep \* | cut -d ' ' -f2)
 GIT_HASH := $(GIT_BRANCH)/$(shell git log -1 --pretty=format:"%H")
 TIMESTAMP := $(shell date '+%Y-%m-%d_%I:%M:%S%p')
+CONTROLLER_GEN_REQ_VERSION := v0.4.0
 
 REGISTRY?=ghcr.io
 REPO=$(REGISTRY)/kyverno
@@ -31,24 +32,24 @@ INITC_IMAGE := kyvernopre
 initContainer: fmt vet
 	GOOS=$(GOOS) go build -o $(PWD)/$(INITC_PATH)/kyvernopre -ldflags=$(LD_FLAGS) $(PWD)/$(INITC_PATH)/main.go
 
-.PHONY: docker-build-initContainer docker-tag-repo-initContainer docker-push-initContainer
+.PHONY: docker-build-initContainer docker-push-initContainer
 
-docker-publish-initContainer: docker-build-initContainer docker-tag-repo-initContainer docker-push-initContainer
+docker-publish-initContainer: docker-build-initContainer docker-push-initContainer
 
 docker-build-initContainer:
-	@docker build -f $(PWD)/$(INITC_PATH)/Dockerfile -t $(REPO)/$(INITC_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS)
+	@docker buildx build --file $(PWD)/$(INITC_PATH)/Dockerfile --progress plane --platform linux/arm64,linux/amd64 --tag $(REPO)/$(INITC_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS)
 
-docker-tag-repo-initContainer:
-	@docker tag $(REPO)/$(INITC_IMAGE):$(IMAGE_TAG) $(REPO)/$(INITC_IMAGE):latest
+docker-build-initContainer-amd64:
+	@docker build -f $(PWD)/$(INITC_PATH)/Dockerfile -t $(REPO)/$(INITC_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS) --build-arg TARGETPLATFORM="linux/amd64"
 
 docker-push-initContainer:
-	@docker push $(REPO)/$(INITC_IMAGE):$(IMAGE_TAG)
-	@docker push $(REPO)/$(INITC_IMAGE):latest
+	@docker buildx build --file $(PWD)/$(INITC_PATH)/Dockerfile --progress plane --push --platform linux/arm64,linux/amd64 --tag $(REPO)/$(INITC_IMAGE):$(IMAGE_TAG) .
+	@docker buildx build --file $(PWD)/$(INITC_PATH)/Dockerfile --progress plane --push --platform linux/arm64,linux/amd64 --tag $(REPO)/$(INITC_IMAGE):latest .
 
 ##################################
 # KYVERNO CONTAINER
 ##################################
-.PHONY: docker-build-kyverno docker-tag-repo-kyverno docker-push-kyverno
+.PHONY: docker-build-kyverno docker-push-kyverno
 KYVERNO_PATH := cmd/kyverno
 KYVERNO_IMAGE := kyverno
 
@@ -59,22 +60,22 @@ local:
 kyverno: fmt vet
 	GOOS=$(GOOS) go build -o $(PWD)/$(KYVERNO_PATH)/kyverno -ldflags=$(LD_FLAGS) $(PWD)/$(KYVERNO_PATH)/main.go
 
-docker-publish-kyverno: docker-build-kyverno  docker-tag-repo-kyverno  docker-push-kyverno
+docker-publish-kyverno: docker-build-kyverno docker-push-kyverno
 
 docker-build-kyverno:
-	@docker build -f $(PWD)/$(KYVERNO_PATH)/Dockerfile -t $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS)
+	@docker buildx build --file $(PWD)/$(KYVERNO_PATH)/Dockerfile --progress plane --platform linux/arm64,linux/amd64 --tag $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS)
 
 docker-build-local-kyverno:
 	CGO_ENABLED=0 GOOS=linux go build -o $(PWD)/$(KYVERNO_PATH)/kyverno -ldflags=$(LD_FLAGS) $(PWD)/$(KYVERNO_PATH)/main.go
 	@docker build -f $(PWD)/$(KYVERNO_PATH)/localDockerfile -t $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG) $(PWD)/$(KYVERNO_PATH)
-
-docker-tag-repo-kyverno:
-	@echo "docker tag $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG) $(REPO)/$(KYVERNO_IMAGE):latest"
 	@docker tag $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG) $(REPO)/$(KYVERNO_IMAGE):latest
 
+docker-build-kyverno-amd64:
+	@docker build -f $(PWD)/$(KYVERNO_PATH)/Dockerfile -t $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS) --build-arg TARGETPLATFORM="linux/amd64"
+
 docker-push-kyverno:
-	@docker push $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG)
-	@docker push $(REPO)/$(KYVERNO_IMAGE):latest
+	@docker buildx build --file $(PWD)/$(KYVERNO_PATH)/Dockerfile --progress plane --push --platform linux/arm64,linux/amd64 --tag $(REPO)/$(KYVERNO_IMAGE):$(IMAGE_TAG) .
+	@docker buildx build --file $(PWD)/$(KYVERNO_PATH)/Dockerfile --progress plane --push --platform linux/arm64,linux/amd64 --tag $(REPO)/$(KYVERNO_IMAGE):latest .
 
 ##################################
 
@@ -88,32 +89,31 @@ generate-api-docs:
 ##################################
 # CLI
 ##################################
-.PHONY: docker-build-cli docker-tag-repo-cli docker-push-cli
+.PHONY: docker-build-cli docker-push-cli
 CLI_PATH := cmd/cli/kubectl-kyverno
 KYVERNO_CLI_IMAGE := kyverno-cli
 
 cli:
 	GOOS=$(GOOS) go build -o $(PWD)/$(CLI_PATH)/kyverno -ldflags=$(LD_FLAGS) $(PWD)/$(CLI_PATH)/main.go
 
-docker-publish-cli: docker-build-cli  docker-tag-repo-cli  docker-push-cli
+docker-publish-cli: docker-build-cli docker-push-cli
 
 docker-build-cli:
-	@docker build -f $(PWD)/$(CLI_PATH)/Dockerfile -t $(REPO)/$(KYVERNO_CLI_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS)
+	@docker buildx build --file $(PWD)/$(CLI_PATH)/Dockerfile --progress plane --platform linux/arm64,linux/amd64 --tag $(REPO)/$(KYVERNO_CLI_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS)
 
-docker-tag-repo-cli:
-	@echo "docker tag $(REPO)/$(KYVERNO_CLI_IMAGE):$(IMAGE_TAG) $(REPO)/$(KYVERNO_CLI_IMAGE):latest"
-	@docker tag $(REPO)/$(KYVERNO_CLI_IMAGE):$(IMAGE_TAG) $(REPO)/$(KYVERNO_CLI_IMAGE):latest
+docker-build-cli-amd64:
+	@docker build -f $(PWD)/$(CLI_PATH)/Dockerfile -t $(REPO)/$(KYVERNO_CLI_IMAGE):$(IMAGE_TAG) . --build-arg LD_FLAGS=$(LD_FLAGS) --build-arg TARGETPLATFORM="linux/amd64"
 
 docker-push-cli:
-	@docker push $(REPO)/$(KYVERNO_CLI_IMAGE):$(IMAGE_TAG)
-	@docker push $(REPO)/$(KYVERNO_CLI_IMAGE):latest
+	@docker buildx build --file $(PWD)/$(CLI_PATH)/Dockerfile --progress plane --push --platform linux/arm64,linux/amd64 --tag $(REPO)/$(KYVERNO_CLI_IMAGE):$(IMAGE_TAG) .
+	@docker buildx build --file $(PWD)/$(CLI_PATH)/Dockerfile --progress plane --push --platform linux/arm64,linux/amd64 --tag $(REPO)/$(KYVERNO_CLI_IMAGE):latest .
 
 ##################################
 docker-publish-all: docker-publish-initContainer docker-publish-kyverno docker-publish-cli
 
 docker-build-all: docker-build-initContainer docker-build-kyverno docker-build-cli
 
-docker-tag-all: docker-tag-repo-initContainer docker-tag-repo-kyverno docker-tag-repo-cli
+docker-build-all-amd64: docker-build-initContainer-amd64 docker-build-kyverno-amd64 docker-build-cli-amd64
 
 ##################################
 # Create e2e Infrastruture
@@ -189,22 +189,40 @@ kyverno-crd: controller-gen
 report-crd: controller-gen
 	$(CONTROLLER_GEN) crd paths=./pkg/api/policyreport/v1alpha1 output:dir=./definitions/crds
 
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifeq (, $(shell which controller-gen))
+# install the right version of controller-gen 
+install-controller-gen:
 	@{ \
 	set -e ;\
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.0 ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_REQ_VERSION) ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
-CONTROLLER_GEN=$(GOPATH)/bin/controller-gen
+	CONTROLLER_GEN=$(GOPATH)/bin/controller-gen
+
+# setup controller-gen with the right version, if necessary
+controller-gen:
+ifeq (, $(shell which controller-gen))
+	@{ \
+	echo "controller-gen not found!";\
+	echo "installing controller-gen $(CONTROLLER_GEN_REQ_VERSION)...";\
+	make install-controller-gen;\
+	}
+else ifneq (Version: $(CONTROLLER_GEN_REQ_VERSION), $(shell controller-gen --version))
+	@{ \
+		echo "controller-gen $(shell controller-gen --version) found!";\
+		echo "required controller-gen $(CONTROLLER_GEN_REQ_VERSION)";\
+		echo "installing controller-gen $(CONTROLLER_GEN_REQ_VERSION)...";\
+		make install-controller-gen;\
+	}
 else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
+
+# Bootstrap auto-generable code associated with deepcopy
+deepcopy-autogen: controller-gen
+	$(CONTROLLER_GEN) object:headerFile="scripts/boilerplate.go.txt" paths="./..."
 
 # Run go fmt against code
 fmt:

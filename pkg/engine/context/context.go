@@ -2,14 +2,14 @@ package context
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 
-	"k8s.io/api/admission/v1beta1"
-
-	jsonpatch "github.com/evanphx/json-patch"
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/go-logr/logr"
 	kyverno "github.com/kyverno/kyverno/pkg/api/kyverno/v1"
+	"k8s.io/api/admission/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -27,6 +27,9 @@ type Interface interface {
 
 	// AddServiceAccount merges ServiceAccount types
 	AddServiceAccount(userName string) error
+
+	// AddNamespace merges resource json under request.namespace
+	AddNamespace(namespace string) error
 
 	EvalInterface
 }
@@ -57,6 +60,16 @@ func NewContext(builtInVars ...string) *Context {
 	return &ctx
 }
 
+// InvalidVariableErr represents error for non-white-listed variables
+type InvalidVariableErr struct {
+	variable  string
+	whiteList []string
+}
+
+func (i InvalidVariableErr) Error() string {
+	return fmt.Sprintf("variable %s cannot be used, allowed variables: %v", i.variable, i.whiteList)
+}
+
 // AddJSON merges json data
 func (ctx *Context) AddJSON(dataRaw []byte) error {
 	var err error
@@ -71,7 +84,7 @@ func (ctx *Context) AddJSON(dataRaw []byte) error {
 	return nil
 }
 
-// AddRequest addes an admission request to context
+// AddRequest adds an admission request to context
 func (ctx *Context) AddRequest(request *v1beta1.AdmissionRequest) error {
 	modifiedResource := struct {
 		Request interface{} `json:"request"`
@@ -90,10 +103,10 @@ func (ctx *Context) AddRequest(request *v1beta1.AdmissionRequest) error {
 //AddResource data at path: request.object
 func (ctx *Context) AddResource(dataRaw []byte) error {
 
-	// unmarshall the resource struct
+	// unmarshal the resource struct
 	var data interface{}
 	if err := json.Unmarshal(dataRaw, &data); err != nil {
-		ctx.log.Error(err, "failed to unmarshall the resource")
+		ctx.log.Error(err, "failed to unmarshal the resource")
 		return err
 	}
 
@@ -180,6 +193,27 @@ func (ctx *Context) AddServiceAccount(userName string) error {
 	return nil
 }
 
+// AddNamespace merges resource json under request.namespace
+func (ctx *Context) AddNamespace(namespace string) error {
+	modifiedResource := struct {
+		Request interface{} `json:"request"`
+	}{
+		Request: struct {
+			Namespace string `json:"namespace"`
+		}{
+			Namespace: namespace,
+		},
+	}
+
+	objRaw, err := json.Marshal(modifiedResource)
+	if err != nil {
+		ctx.log.Error(err, "failed to marshal the resource")
+		return err
+	}
+
+	return ctx.AddJSON(objRaw)
+}
+
 // Checkpoint creates a copy of the internal state.
 // Prior checkpoints will be overridden.
 func (ctx *Context) Checkpoint() {
@@ -202,4 +236,21 @@ func (ctx *Context) Restore() {
 
 	ctx.jsonRaw = make([]byte, len(ctx.jsonRawCheckpoint))
 	copy(ctx.jsonRaw, ctx.jsonRawCheckpoint)
+}
+
+// AddBuiltInVars adds given pattern to the builtInVars
+func (ctx *Context) AddBuiltInVars(pattern string) {
+	ctx.mutex.Lock()
+	defer ctx.mutex.Unlock()
+
+	builtInVarsCopy := ctx.builtInVars
+	ctx.builtInVars = append(builtInVarsCopy, pattern)
+}
+
+func (ctx *Context) getBuiltInVars() []string {
+	ctx.mutex.RLock()
+	defer ctx.mutex.RUnlock()
+
+	vars := ctx.builtInVars
+	return vars
 }

@@ -51,6 +51,7 @@ func (ws *WebhookServer) HandleGenerate(request *v1beta1.AdmissionRequest, polic
 			ExcludeResourceFunc: ws.configHandler.ToFilter,
 			ResourceCache:       ws.resCache,
 			JSONContext:         ctx,
+			Client:              ws.client,
 		}
 
 		for _, policy := range policies {
@@ -309,9 +310,10 @@ func transform(userRequestInfo kyverno.RequestInfo, er *response.EngineResponse)
 	gr := kyverno.GenerateRequestSpec{
 		Policy: er.PolicyResponse.Policy,
 		Resource: kyverno.ResourceSpec{
-			Kind:      er.PolicyResponse.Resource.Kind,
-			Namespace: er.PolicyResponse.Resource.Namespace,
-			Name:      er.PolicyResponse.Resource.Name,
+			Kind:       er.PolicyResponse.Resource.Kind,
+			Namespace:  er.PolicyResponse.Resource.Namespace,
+			Name:       er.PolicyResponse.Resource.Name,
+			APIVersion: er.PolicyResponse.Resource.APIVersion,
 		},
 		Context: kyverno.GenerateRequestContext{
 			UserRequestInfo: userRequestInfo,

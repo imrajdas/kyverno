@@ -13,6 +13,7 @@ import (
 	"github.com/minio/minio/pkg/wildcard"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,10 +28,21 @@ type EngineStats struct {
 	RulesAppliedCount int
 }
 
-func checkKind(kinds []string, resourceKind string) bool {
+func checkKind(kinds []string, resource unstructured.Unstructured) bool {
 	for _, kind := range kinds {
-		if resourceKind == kind {
-			return true
+		SplitGVK := strings.Split(kind, "/")
+		if len(SplitGVK) == 1 {
+			if resource.GetKind() == kind {
+				return true
+			}
+		} else if len(SplitGVK) == 2 {
+			if resource.GroupVersionKind().Kind == SplitGVK[1] && resource.GroupVersionKind().Version == SplitGVK[0] {
+				return true
+			}
+		} else {
+			if resource.GroupVersionKind().Group == SplitGVK[0] && resource.GroupVersionKind().Kind == SplitGVK[2] && (resource.GroupVersionKind().Version == SplitGVK[1] || resource.GroupVersionKind().Version == "*") {
+				return true
+			}
 		}
 	}
 
@@ -112,7 +124,7 @@ func doesResourceMatchConditionBlock(conditionBlock kyverno.ResourceDescription,
 	var errs []error
 
 	if len(conditionBlock.Kinds) > 0 {
-		if !checkKind(conditionBlock.Kinds, resource.GetKind()) {
+		if !checkKind(conditionBlock.Kinds, resource) {
 			errs = append(errs, fmt.Errorf("kind does not match %v", conditionBlock.Kinds))
 		}
 	}
@@ -276,7 +288,15 @@ func MatchesResourceDescription(resourceRef unstructured.Unstructured, ruleRef k
 	return nil
 }
 
-func copyConditions(original []kyverno.Condition) []kyverno.Condition {
+func copyAnyAllConditions(original kyverno.AnyAllConditions) kyverno.AnyAllConditions {
+	if reflect.DeepEqual(original, kyverno.AnyAllConditions{}) {
+		return kyverno.AnyAllConditions{}
+	}
+	return *original.DeepCopy()
+}
+
+// backwards compatibility
+func copyOldConditions(original []kyverno.Condition) []kyverno.Condition {
 	if original == nil || len(original) == 0 {
 		return []kyverno.Condition{}
 	}
@@ -287,6 +307,21 @@ func copyConditions(original []kyverno.Condition) []kyverno.Condition {
 	}
 
 	return copies
+}
+
+func copyConditions(original apiextensions.JSON) (interface{}, error) {
+	// conditions are currently in the form of []interface{}
+	kyvernoOriginalConditions, err := utils.ApiextensionsJsonToKyvernoConditions(original)
+	if err != nil {
+		return nil, err
+	}
+	switch typedValue := kyvernoOriginalConditions.(type) {
+	case kyverno.AnyAllConditions:
+		return copyAnyAllConditions(typedValue), nil
+	case []kyverno.Condition: // backwards compatibility
+		return copyOldConditions(typedValue), nil
+	}
+	return nil, fmt.Errorf("wrongfully configured data")
 }
 
 // excludeResource checks if the resource has ownerRef set

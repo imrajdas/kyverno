@@ -21,14 +21,15 @@ func filterRules(policyContext *PolicyContext) *response.EngineResponse {
 	kind := policyContext.NewResource.GetKind()
 	name := policyContext.NewResource.GetName()
 	namespace := policyContext.NewResource.GetNamespace()
-
+	apiVersion := policyContext.NewResource.GetAPIVersion()
 	resp := &response.EngineResponse{
 		PolicyResponse: response.PolicyResponse{
 			Policy: policyContext.Policy.Name,
 			Resource: response.ResourceSpec{
-				Kind:      kind,
-				Name:      name,
-				Namespace: namespace,
+				Kind:       kind,
+				Name:       name,
+				Namespace:  namespace,
+				APIVersion: apiVersion,
 			},
 		},
 	}
@@ -86,14 +87,17 @@ func filterRule(rule kyverno.Rule, policyContext *PolicyContext) *response.RuleR
 	policyContext.JSONContext.Checkpoint()
 	defer policyContext.JSONContext.Restore()
 
-	// add configmap json data to context
 	if err := LoadContext(logger, rule.Context, resCache, policyContext); err != nil {
-		logger.V(4).Info("cannot add configmaps to context", "reason", err.Error())
+		logger.V(4).Info("cannot add external data to the context", "reason", err.Error())
 		return nil
 	}
 
 	// operate on the copy of the conditions, as we perform variable substitution
-	copyConditions := copyConditions(rule.Conditions)
+	copyConditions, err := copyConditions(rule.AnyAllConditions)
+	if err != nil {
+		logger.V(4).Info("cannot copy AnyAllConditions", "reason", err.Error())
+		return nil
+	}
 
 	// evaluate pre-conditions
 	if !variables.EvaluateConditions(logger, ctx, copyConditions) {

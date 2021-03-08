@@ -71,12 +71,16 @@ func Mutate(policyContext *PolicyContext) (resp *response.EngineResponse) {
 
 		policyContext.JSONContext.Restore()
 		if err := LoadContext(logger, rule.Context, resCache, policyContext); err != nil {
-			logger.V(2).Info("failed to load context", "reason", err.Error())
+			logger.Error(err, "failed to load context")
 			continue
 		}
 
 		// operate on the copy of the conditions, as we perform variable substitution
-		copyConditions := copyConditions(rule.Conditions)
+		copyConditions, err := copyConditions(rule.AnyAllConditions)
+		if err != nil {
+			logger.V(2).Info("failed to load context", "reason", err.Error())
+			continue
+		}
 		// evaluate pre-conditions
 		// - handle variable substitutions
 		if !variables.EvaluateConditions(logger, ctx, copyConditions) {

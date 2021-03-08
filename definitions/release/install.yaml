@@ -111,7 +111,7 @@ spec:
                               description: Name is the name of the resource. The name supports wildcard characters "*" (matches zero or many characters) and "?" (at least one character).
                               type: string
                             namespaceSelector:
-                              description: 'NamespaceSelector is a label selector for namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character). Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
+                              description: 'NamespaceSelector is a label selector for the resource namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character).Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
                               properties:
                                 matchExpressions:
                                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -245,7 +245,7 @@ spec:
                             type: string
                           type: array
                         resources:
-                          description: ResourceDescription contains information about the resource being created or modified.
+                          description: ResourceDescription contains information about the resource being created or modified. Requires at least one tag to be specified when under MatchResources.
                           properties:
                             annotations:
                               additionalProperties:
@@ -261,7 +261,7 @@ spec:
                               description: Name is the name of the resource. The name supports wildcard characters "*" (matches zero or many characters) and "?" (at least one character).
                               type: string
                             namespaceSelector:
-                              description: 'NamespaceSelector is a label selector for namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character). Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
+                              description: 'NamespaceSelector is a label selector for the resource namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character).Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
                               properties:
                                 matchExpressions:
                                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -387,28 +387,11 @@ spec:
                       type: object
                     name:
                       description: Name is a label to identify the rule, It must be unique within the policy.
+                      maxLength: 63
                       type: string
                     preconditions:
-                      description: Conditions enable variable-based conditional rule execution. This is useful for finer control of when an rule is applied. A condition can reference object data using JMESPath notation.
-                      items:
-                        description: Condition defines variable-based conditional criteria for rule execution.
-                        properties:
-                          key:
-                            description: Key is the context entry (using JMESPath) for conditional rule evaluation.
-                            x-kubernetes-preserve-unknown-fields: true
-                          operator:
-                            description: Operator is the operation to perform.
-                            enum:
-                            - Equals
-                            - NotEquals
-                            - In
-                            - NotIn
-                            type: string
-                          value:
-                            description: Value is the conditional value, or set of values. The values can be fixed set or can be variables declared using using JMESPath.
-                            x-kubernetes-preserve-unknown-fields: true
-                        type: object
-                      type: array
+                      description: AnyAllConditions enable variable-based conditional rule execution. This is useful for finer control of when an rule is applied. A condition can reference object data using JMESPath notation. This too can be made to happen in a logical-manner where in some situation all the conditions need to pass and in some other situation, atleast one condition is enough to pass. For the sake of backwards compatibility, it can be populated with []kyverno.Condition.
+                      x-kubernetes-preserve-unknown-fields: true
                     validate:
                       description: Validation is used to validate matching resources.
                       properties:
@@ -419,26 +402,8 @@ spec:
                           description: Deny defines conditions to fail the validation rule.
                           properties:
                             conditions:
-                              description: Specifies set of condition to deny.
-                              items:
-                                description: Condition defines variable-based conditional criteria for rule execution.
-                                properties:
-                                  key:
-                                    description: Key is the context entry (using JMESPath) for conditional rule evaluation.
-                                    x-kubernetes-preserve-unknown-fields: true
-                                  operator:
-                                    description: Operator is the operation to perform.
-                                    enum:
-                                    - Equals
-                                    - NotEquals
-                                    - In
-                                    - NotIn
-                                    type: string
-                                  value:
-                                    description: Value is the conditional value, or set of values. The values can be fixed set or can be variables declared using using JMESPath.
-                                    x-kubernetes-preserve-unknown-fields: true
-                                type: object
-                              type: array
+                              description: specifies the set of conditions to deny in a logical manner For the sake of backwards compatibility, it can be populated with []kyverno.Condition.
+                              x-kubernetes-preserve-unknown-fields: true
                           type: object
                         message:
                           description: Message specifies a custom message to be displayed on failure.
@@ -1290,7 +1255,7 @@ spec:
                               description: Name is the name of the resource. The name supports wildcard characters "*" (matches zero or many characters) and "?" (at least one character).
                               type: string
                             namespaceSelector:
-                              description: 'NamespaceSelector is a label selector for namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character). Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
+                              description: 'NamespaceSelector is a label selector for the resource namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character).Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
                               properties:
                                 matchExpressions:
                                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -1424,7 +1389,7 @@ spec:
                             type: string
                           type: array
                         resources:
-                          description: ResourceDescription contains information about the resource being created or modified.
+                          description: ResourceDescription contains information about the resource being created or modified. Requires at least one tag to be specified when under MatchResources.
                           properties:
                             annotations:
                               additionalProperties:
@@ -1440,7 +1405,7 @@ spec:
                               description: Name is the name of the resource. The name supports wildcard characters "*" (matches zero or many characters) and "?" (at least one character).
                               type: string
                             namespaceSelector:
-                              description: 'NamespaceSelector is a label selector for namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character). Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
+                              description: 'NamespaceSelector is a label selector for the resource namespace. Label keys and values in `matchLabels` support the wildcard characters `*` (matches zero or many characters) and `?` (matches one character).Wildcards allows writing label selectors like ["storage.k8s.io/*": "*"]. Note that using ["*" : "*"] matches any key and value but does not match an empty label set.'
                               properties:
                                 matchExpressions:
                                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -1566,28 +1531,11 @@ spec:
                       type: object
                     name:
                       description: Name is a label to identify the rule, It must be unique within the policy.
+                      maxLength: 63
                       type: string
                     preconditions:
-                      description: Conditions enable variable-based conditional rule execution. This is useful for finer control of when an rule is applied. A condition can reference object data using JMESPath notation.
-                      items:
-                        description: Condition defines variable-based conditional criteria for rule execution.
-                        properties:
-                          key:
-                            description: Key is the context entry (using JMESPath) for conditional rule evaluation.
-                            x-kubernetes-preserve-unknown-fields: true
-                          operator:
-                            description: Operator is the operation to perform.
-                            enum:
-                            - Equals
-                            - NotEquals
-                            - In
-                            - NotIn
-                            type: string
-                          value:
-                            description: Value is the conditional value, or set of values. The values can be fixed set or can be variables declared using using JMESPath.
-                            x-kubernetes-preserve-unknown-fields: true
-                        type: object
-                      type: array
+                      description: AnyAllConditions enable variable-based conditional rule execution. This is useful for finer control of when an rule is applied. A condition can reference object data using JMESPath notation. This too can be made to happen in a logical-manner where in some situation all the conditions need to pass and in some other situation, atleast one condition is enough to pass. For the sake of backwards compatibility, it can be populated with []kyverno.Condition.
+                      x-kubernetes-preserve-unknown-fields: true
                     validate:
                       description: Validation is used to validate matching resources.
                       properties:
@@ -1598,26 +1546,8 @@ spec:
                           description: Deny defines conditions to fail the validation rule.
                           properties:
                             conditions:
-                              description: Specifies set of condition to deny.
-                              items:
-                                description: Condition defines variable-based conditional criteria for rule execution.
-                                properties:
-                                  key:
-                                    description: Key is the context entry (using JMESPath) for conditional rule evaluation.
-                                    x-kubernetes-preserve-unknown-fields: true
-                                  operator:
-                                    description: Operator is the operation to perform.
-                                    enum:
-                                    - Equals
-                                    - NotEquals
-                                    - In
-                                    - NotIn
-                                    type: string
-                                  value:
-                                    description: Value is the conditional value, or set of values. The values can be fixed set or can be variables declared using using JMESPath.
-                                    x-kubernetes-preserve-unknown-fields: true
-                                type: object
-                              type: array
+                              description: specifies the set of conditions to deny in a logical manner For the sake of backwards compatibility, it can be populated with []kyverno.Condition.
+                              x-kubernetes-preserve-unknown-fields: true
                           type: object
                         message:
                           description: Message specifies a custom message to be displayed on failure.
@@ -2509,7 +2439,7 @@ spec:
               fieldPath: metadata.namespace
         - name: KYVERNO_SVC
           value: kyverno-svc
-        image: ghcr.io/kyverno/kyverno:v1.3.3
+        image: ghcr.io/kyverno/kyverno:v1.3.4
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 4
@@ -2552,7 +2482,7 @@ spec:
           runAsNonRoot: true
           runAsUser: 1000
       initContainers:
-      - image: ghcr.io/kyverno/kyvernopre:v1.3.3
+      - image: ghcr.io/kyverno/kyvernopre:v1.3.4
         imagePullPolicy: IfNotPresent
         name: kyverno-pre
         securityContext:
